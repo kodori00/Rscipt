@@ -1,0 +1,125 @@
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+library(chron)
+library(rstatix)
+library(emmeans)
+library(anytime)
+library(lubridate)
+
+
+
+
+setwd("/Volumes/LaCie/JAE PARK/Project/J6 Esr1 flfl x RPRM cre/Tele")#setwd("~/Desktop")
+
+lon<-7 #set this to the clock time that the lights turn on (ZT0)
+
+idinfo<-c("mouse", "misc", "measure", "misc2") #Order of info in ID strings, set unwanted columns to "misc[index]". MOUSE SHOULD BE FIRST!
+# micetoexclude<-c("T15") # To exclude any mouse
+
+d<-read.csv("283.csv",check.names = FALSE) # check.names=FALSE when it cant read csv file
+colnames(d)<-gsub(" ", "_", colnames(d)) # Underline instead of the space
+df<-d%>%pivot_longer(3:length(colnames(d)),names_to="ID",values_to="data")%>%separate(ID, sep="_",idinfo)%>%select(!starts_with("misc"))%>%
+  mutate(measure=case_when(measure=="Deg."~"temp",measure=="Cnts"~"activity",T~"unknown"))
+
+
+start2<-(chron(dates. = "9/28/22", times. = "07:00:00"))
+end2<-(chron(dates.="9/30/22", times.="07:00:00"))
+
+
+
+df<-df%>%mutate(chron=chron(dates.=date, times.=time))
+df<-df%>%spread(measure,data)
+df<-df%>%mutate(zt=chron(times.=time))%>%mutate(zt=round(24*ifelse(zt>=(lon/24),(zt-lon/24),(zt+(24/24)-(lon/24))),digits=4))
+df<-df%>%filter((chron>start2 & chron<end2))
+
+
+#Meta data
+m1<-read.csv("ER Meta8.csv")
+
+
+df$date<-format(anytime(df$date),"%Y-%m-%d")
+
+df$DateTime <-with(df, anytime(paste(date, time)))
+
+dfa<-select(df, DateTime, temp, activity,mouse)
+
+dfa <- dfa %>% mutate(Hour = hour(DateTime))
+
+dfa<-merge(dfa,m1, by="mouse")
+
+sum<- dfa
+
+
+fk<- sum %>%
+  dplyr::filter(TRX == "Casp")
+fw<- sum %>%
+  dplyr::filter(TRX == "GFP")
+
+
+fkz<-fk%>%filter(!is.na(temp))%>%group_by(Hour,mouse)%>%dplyr::summarize(value=mean(temp))
+
+fwz<-fw%>%filter(!is.na(temp))%>%group_by(Hour,mouse)%>%dplyr::summarize(value=mean(temp))
+
+
+ys <- fkz %>%
+  group_by(Hour) %>%
+  summarise( 
+    n=n(),
+    mean=mean(value),
+    sd=sd(value)
+  ) %>%
+  mutate( se=sd/sqrt(n))  %>%
+  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+
+yw <- fwz %>%
+  group_by(Hour) %>%
+  summarise( 
+    n=n(),
+    mean=mean(value),
+    sd=sd(value)
+  ) %>%
+  mutate( se=sd/sqrt(n))  %>%
+  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+
+ys<-ys%>%mutate(zt=c(18,19,20,21,22,23,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17))
+
+yw<-yw%>%mutate(zt=c(18,19,20,21,22,23,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17))
+
+ysse<-select(ys, zt, mean, se)
+
+ywse<-select(yw, zt, mean, se)
+
+ysse<-ysse%>%mutate(group="KO")
+
+ywse<-ywse%>%mutate(group="WT")
+
+zz<-rbind(ysse,ywse)
+
+colnames(ywse)<-c("zt","mean2","se2")
+
+z1<-merge(ysse,ywse, by="zt")
+
+#df<-na.omit(df)
+
+brks = seq(0, 23, 1)
+#lbs <- ifelse(brks%%6 == 0, format(brks, digits = 1, nsmall = 1), "")
+
+lbs <- c("0","","","","","","6","","","","","","12","","","","","","18","","","","","23")
+
+ms<-list(list(theme_classic()))
+ddf<-data.frame("zt_xmin"=c(12+(23.5*(0:3))),"zt_xmax"=c(23.5+(23.5*(0:3))))###use this df below to create automatic shading below
+ztset<-list(scale_x_continuous(limits=c(0,23.5),breaks = brks, labels = lbs,expand=c(0.01,0)),
+            geom_rect(fill="grey",data=ddf,inherit.aes=FALSE,aes(xmin=zt_xmin,xmax=zt_xmax),ymin=-Inf,ymax=Inf))
+set<-list(scale_y_continuous(limits=c(36,38.5)))
+
+
+p1<-ggplot(zz, aes(x=zt,y=mean,group=group, colour=group))+ms+ztset+set+
+  geom_line()+
+  geom_point()+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width=.2, position=position_dodge(0.05))+
+  theme_classic()+
+  labs(x="Zeitgeber Time",y="T_Core(°C)",title="Caspase Core_T")+scale_color_manual("", values = c("purple", "black"))+  theme(legend.position="none")
+
+p1
