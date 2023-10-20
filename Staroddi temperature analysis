@@ -24,7 +24,9 @@ start1<-"2022-07-06 07:00:00"
 end1<-"2022-07-08 07:00:00"
 
 
-#First sample
+#for excel csv, use : mm/dd/yyyy hh:mm;@
+
+
 
 t1<-read.csv("1N7787.csv",check.names = FALSE) # check.names=FALSE when it cant read csv file
 
@@ -37,7 +39,6 @@ t1<-t1%>%dplyr::filter((t1$Timestamp>start1 & t1$Timestamp<end1))
 
 colnames(t1)[2]<-334
 
-#Second sample
 
 t2<-read.csv("1N7786.csv",check.names = FALSE) # check.names=FALSE when it cant read csv file
 
@@ -48,4 +49,237 @@ t2$Timestamp<-as.character(t2$Timestamp) #if it doesnt changed to character, it 
 
 t2<-t2%>%dplyr::filter((t2$Timestamp>start1 & t2$Timestamp<end1))
 colnames(t2)[2]<-335
+
+
+
+t3<-read.csv("1N7784.csv",check.names = FALSE) # check.names=FALSE when it cant read csv file
+
+t3$Timestamp<- anytime(t3$Timestamp)
+
+t3$Timestamp<-as.character(t3$Timestamp) #if it doesnt changed to character, it wont recognized in mutant step 
+#will have date error
+
+t3<-t3%>%dplyr::filter((t3$Timestamp>start1 & t3$Timestamp<end1))
+colnames(t3)[2]<-339
+
+t4<-read.csv("1N7783.csv",check.names = FALSE) # check.names=FALSE when it cant read csv file
+
+t4$Timestamp<- anytime(t4$Timestamp)
+
+t4$Timestamp<-as.character(t4$Timestamp) #if it doesnt changed to character, it wont recognized in mutant step 
+#will have date error
+
+t4<-t4%>%dplyr::filter((t4$Timestamp>start1 & t4$Timestamp<end1))
+colnames(t4)[2]<-369
+
+
+t5<-read.csv("1N7778.csv",check.names = FALSE) # check.names=FALSE when it cant read csv file
+
+t5$Timestamp<- anytime(t5$Timestamp)
+
+t5$Timestamp<-as.character(t5$Timestamp) #if it doesnt changed to character, it wont recognized in mutant step 
+#will have date error
+
+t5<-t5%>%dplyr::filter((t5$Timestamp>start1 & t5$Timestamp<end1))
+colnames(t5)[2]<-357
+
+
+t6<-read.csv("1N7788.csv",check.names = FALSE) # check.names=FALSE when it cant read csv file
+
+t6$Timestamp<- anytime(t6$Timestamp)
+
+t6$Timestamp<-as.character(t6$Timestamp) #if it doesnt changed to character, it wont recognized in mutant step 
+#will have date error
+
+t6<-t6%>%dplyr::filter((t6$Timestamp>start1 & t6$Timestamp<end1))
+colnames(t6)[2]<-358
+
+
+t7<-read.csv("1N7779.csv",check.names = FALSE) # check.names=FALSE when it cant read csv file
+
+t7$Timestamp<- anytime(t7$Timestamp)
+
+t7$Timestamp<-as.character(t7$Timestamp) #if it doesnt changed to character, it wont recognized in mutant step 
+#will have date error
+
+t7<-t7%>%dplyr::filter((t7$Timestamp>start1 & t7$Timestamp<end1))
+colnames(t7)[2]<-367
+
+
+t8<-read.csv("1N7782.csv",check.names = FALSE) # check.names=FALSE when it cant read csv file
+
+t8$Timestamp<- anytime(t8$Timestamp)
+
+t8$Timestamp<-as.character(t8$Timestamp) #if it doesnt changed to character, it wont recognized in mutant step 
+#will have date error
+
+t8<-t8%>%dplyr::filter((t8$Timestamp>start1 & t8$Timestamp<end1))
+colnames(t8)[2]<-368
+
+####
+
+#combine & process raw data (Batch4)====
+
+
+
+df<-merge(t1,t2, by = "Timestamp")
+df<-merge(df,t3, by = "Timestamp")
+df<-merge(df,t4, by = "Timestamp")
+df<-merge(df,t5, by = "Timestamp")
+df<-merge(df,t6, by = "Timestamp")
+df<-merge(df,t7, by = "Timestamp")
+df<-merge(df,t8, by = "Timestamp")
+
+df<-df%>%dplyr::filter((df$Timestamp>start1 & df$Timestamp<end1))
+
+
+df<-df%>%pivot_longer(2:length(colnames(df)),names_to="mouse",values_to="data")
+
+df_meta<-read.csv("ER Meta7.csv")
+
+dff<-merge(df,df_meta, by="mouse")
+
+#for stat
+e2<-df%>%mutate(Hour = hour(Timestamp))%>%mutate(zt = case_when (Hour <7 ~ Hour+17, Hour >=7 ~ Hour-7))
+
+e2<-merge(e2,df_meta, by="mouse")
+
+dff$Timestamp <- as_datetime(dff$Timestamp)
+
+base <- dff %>% mutate(Hour = hour(Timestamp))
+base$Hour<-as.numeric(base$Hour)
+
+
+base<-base%>%group_by(Hour,mouse)%>%dplyr::summarize(data=mean(data))
+
+base<-merge(base,df_meta, by="mouse")
+
+## individual data
+
+
+ms<-list(list(theme_classic()))
+doratman<-data.frame("zt_xmin"=c(12+(24*(0:3))),"zt_xmax"=c(24+(24*(0:3))))###use this df below to create automatic shading below
+ztset<-list(scale_x_continuous(limits=c(0,24),breaks=c(0,4,8,12,16,20,24),expand=c(0,0)),
+            geom_rect(fill="grey",data=doratman,inherit.aes=FALSE,aes(xmin=zt_xmin,xmax=zt_xmax),ymin=-Inf,ymax=Inf))
+set<-list(scale_y_continuous(limits=c(20,40)))
+
+
+
+wt334<-base%>%dplyr::filter(mouse=="334")%>%mutate(zt = case_when (Hour <7 ~ Hour+17, Hour >=7 ~ Hour-7))
+ko335<-base%>%dplyr::filter(mouse=="335")%>%mutate(zt = case_when (Hour <7 ~ Hour+17, Hour >=7 ~ Hour-7))
+wt339<-base%>%dplyr::filter(mouse=="339")%>%mutate(zt = case_when (Hour <7 ~ Hour+17, Hour >=7 ~ Hour-7))
+ko369<-base%>%dplyr::filter(mouse=="369")%>%mutate(zt = case_when (Hour <7 ~ Hour+17, Hour >=7 ~ Hour-7))
+wt357<-base%>%dplyr::filter(mouse=="357")%>%mutate(zt = case_when (Hour <7 ~ Hour+17, Hour >=7 ~ Hour-7))
+ko358<-base%>%dplyr::filter(mouse=="358")%>%mutate(zt = case_when (Hour <7 ~ Hour+17, Hour >=7 ~ Hour-7))
+wt367<-base%>%dplyr::filter(mouse=="367")%>%mutate(zt = case_when (Hour <7 ~ Hour+17, Hour >=7 ~ Hour-7))
+ko368<-base%>%dplyr::filter(mouse=="368")%>%mutate(zt = case_when (Hour <7 ~ Hour+17, Hour >=7 ~ Hour-7))
+
+pa1<-ggplot()+ztset+geom_line(data=wt334, aes(x=zt, y=data))+ms+set+labs(y="temp",title="TMXKO291")
+pa2<-ggplot()+ztset+geom_line(data=ko335, aes(x=zt, y=data))+ms+set+labs(y="temp",title="TMXKO328")
+
+pa3<-ggplot()+ztset+geom_line(data=wt339, aes(x=zt, y=data))+ms+set+labs(y="temp",title="TMXWT331")
+pa4<-ggplot()+ztset+geom_line(data=ko369, aes(x=zt, y=data))+ms+set+labs(y="temp",title="TMXWT333")
+
+pa5<-ggplot()+ztset+geom_line(data=wt357, aes(x=zt, y=data))+ms+set+labs(y="temp",title="OILKO292")
+pa6<-ggplot()+ztset+geom_line(data=ko358, aes(x=zt, y=data))+ms+set+labs(y="temp",title="OILKO329")
+pa7<-ggplot()+ztset+geom_line(data=wt367, aes(x=zt, y=data))+ms+set+labs(y="temp",title="OILKO330")
+
+pa8<-ggplot()+ztset+geom_line(data=ko368, aes(x=zt, y=data))+ms+set+labs(y="temp",title="OILWT306")
+
+p1<-ggarrange(pa1,pa2)
+p2<-ggarrange(pa3,pa4)
+p3<-ggarrange(pa5,pa6)
+p4<-ggarrange(pa7,pa8)
+
+
+
+
+
+
+
+fw<- base %>%
+  dplyr::filter(Gene == "FWT")
+fw<- rename(fw, temp = data)
+fk<- base %>%
+  dplyr::filter(Gene == "FKO")
+fk<- rename(fk, temp = data)
+
+
+####
+
+fkz<-fk%>%filter(!is.na(temp))%>%group_by(Hour,mouse)%>%dplyr::summarize(value=mean(temp))
+
+fwz<-fw%>%filter(!is.na(temp))%>%group_by(Hour,mouse)%>%dplyr::summarize(value=mean(temp))
+
+
+ys <- fkz %>%
+  group_by(Hour) %>%
+  summarise( 
+    n=n(),
+    mean=mean(value),
+    sd=sd(value)
+  ) %>%
+  mutate( se=sd/sqrt(n))  %>%
+  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+
+yw <- fwz %>%
+  group_by(Hour) %>%
+  summarise( 
+    n=n(),
+    mean=mean(value),
+    sd=sd(value)
+  ) %>%
+  mutate( se=sd/sqrt(n))  %>%
+  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+
+ys<-ys%>%mutate(zt=c(18,19,20,21,22,23,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17))
+
+yw<-yw%>%mutate(zt=c(18,19,20,21,22,23,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17))
+
+ysse<-select(ys, zt, mean, se)
+
+ywse<-select(yw, zt, mean, se)
+
+ysse<-ysse%>%mutate(group="KO")
+
+ywse<-ywse%>%mutate(group="WT")
+
+zz<-rbind(ysse,ywse)
+
+colnames(ywse)<-c("zt","mean2","se2","group")
+
+z1<-merge(ysse,ywse, by="zt")
+
+#df<-na.omit(df)
+
+#for F
+femaleforf<-eee%>%mutate(sex="Female")
+
+
+
+brks = seq(0, 23, 1)
+#lbs <- ifelse(brks%%6 == 0, format(brks, digits = 1, nsmall = 1), "")
+
+lbs <- c("0","","","","","","6","","","","","","12","","","","","","18","","","","","23")
+
+ms<-list(list(theme_classic()))
+ddf<-data.frame("zt_xmin"=c(12+(23.5*(0:3))),"zt_xmax"=c(23.5+(23.5*(0:3))))###use this df below to create automatic shading below
+ztset<-list(scale_x_continuous(limits=c(0,23.5),breaks = brks, labels = lbs,expand=c(0.01,0)),
+            geom_rect(fill="grey85",data=ddf,inherit.aes=FALSE,aes(xmin=zt_xmin,xmax=zt_xmax),ymin=-Inf,ymax=Inf))
+set<-list(scale_y_continuous(limits=c(30,37)))
+
+
+p1<-ggplot(zz, aes(x=zt,y=mean,group=group, colour=group))+ms+ztset+set+
+  geom_line()+
+  geom_point()+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width=.2, position=position_dodge(0.05))+
+  theme_classic()+
+  labs(x="Zeitgeber Time",y="T_Core(°C)",title="RERKO Female Core_T")+scale_color_manual("", values = c("red", "black"))+  theme(legend.position="none")
+
+p1
+
+# checking how many numbers
+eewild<-base%>%filter(Gene == "FWT")%>%summarise(num_mouse = n_distinct(mouse))
+print(eewild)
+
 
