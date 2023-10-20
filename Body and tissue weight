@@ -1,0 +1,182 @@
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+library(chron)
+library(rstatix)
+library(emmeans)
+library(EnvStats)
+library(lubridate)
+library(anytime)
+library(reshape2)
+
+
+d<-read.csv("E;R KO Weight total.csv",check.names = FALSE)
+
+#d<-subset(d, select= c(1:9))
+
+d<-subset(d, select = -c(1) )
+
+df<-melt(d, by="Gene")
+
+#####stat
+
+
+
+stat_df<-dplyr::filter(df, Gene == c("MWT","MKO") & variable == "16")
+
+
+
+res.aov<-aov(value ~ Gene,data=stat_df)
+summary(res.aov)
+TukeyHSD(res.aov)
+########
+
+#df <- df %>% group_by(Gene,variable) %>% 
+#summarize(weight = mean(value, na.rm=TRUE)) 
+
+df_sum <- df %>%
+  group_by(variable,Gene) %>%
+  summarise( 
+    n=n(),
+    mean=mean(value, na.rm=TRUE),
+    sd=sd(value, na.rm=TRUE)
+  ) %>%
+  mutate( se=sd/sqrt(n))  %>%
+  mutate( ic=se * qt((1-0.05)/2 + .5, n-1))
+
+
+w1<- df_sum %>%
+  dplyr::filter(Gene == c("FKO","FWT"))
+
+w2<- df_sum %>%
+  dplyr::filter(Gene == c("MKO","MWT"))
+
+p1<-ggplot(w1, aes(x=variable,y=mean,group=Gene, colour=Gene))+
+  geom_line()+
+  geom_point()+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width=.2, position=position_dodge(0.05))+
+  theme_classic()+
+  labs(x="Weeks",y="BW(g)",title="Female body weight")+scale_color_manual("", values = c("red", "grey4"))+ theme(legend.position="none")+labs(x=NULL,y=NULL,title=NULL)
+
+
+p1
+
+
+ggsave("RERKO Female body weight 16wks(B1-p).png",p1,device="png",scale= 1, dpi=300, width=3.2, height=2.4)
+
+
+
+p2<-ggplot(w2, aes(x=variable,y=mean,group=Gene, colour=Gene))+
+  geom_line()+
+  geom_point()+
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width=.2, position=position_dodge(0.05))+
+  theme_classic()+
+  labs(x="Weeks",y="BW(g)",title="Male body weight")+scale_color_manual("", values = c("blue", "grey4"))+ theme(legend.position="none")+labs(x=NULL,y=NULL,title=NULL)
+
+
+p2
+
+
+
+ggsave("RERKO Male body weight 16wks(B2-p).png",p2,device="png",scale= 1, dpi=300, width=3.2, height=2.4)
+
+
+#Tissue weight
+
+
+
+
+d<-read.csv("RERKO sac day night total.csv",check.names = FALSE)
+
+
+
+
+fwt<- d %>%
+  dplyr::filter(Gene == "WT")
+
+fwbw<-select(fwt, Gene, bw)
+
+fwb<-select(fwt, Gene, BAT)
+
+fwi<-select(fwt, Gene, iWAT)
+fwg<-select(fwt, Gene, gWAT)
+fwu<-select(fwt, Gene, ut)
+fwo<-select(fwt, Gene, ov)
+
+
+fko<- d %>%
+  dplyr::filter(Gene == "KO")
+
+fkbw<-select(fko, Gene, bw)
+fkb<-select(fko, Gene, BAT)
+fki<-select(fko, Gene, iWAT)
+fkg<-select(fko, Gene, gWAT)
+fku<-select(fko, Gene, ut)
+fko<-select(fko, Gene, ov)
+
+
+fb<-rbind(fwbw, fkbw)
+ff<-rbind(fkb,fwb)
+ffi<-rbind(fwi,fki)
+ffg<-rbind(fwg,fkg)
+fft<-rbind(fwu, fku)
+ffo<-rbind(fwo, fko)
+
+p11<-ggplot(fb, aes(x=Gene ,y=bw, fill=Gene))+geom_dotplot(binaxis = "y", stackdir = "center")+
+  stat_summary(geom = "errorbar", fun.data = mean_se)+labs(y="Body Mass (g)")+scale_fill_manual(values = c("red","gray3"))+theme_classic()+
+  theme(axis.title.x=element_blank(),legend.position="none")+scale_x_discrete(limits=c("WT","KO"))+theme(axis.text.x = element_text(size=8), axis.text.y = element_text(size=8))
+
+
+p11
+
+
+p4<-ggplot(ff, aes(x=Gene ,y=BAT, fill=Gene))+geom_dotplot(binaxis = "y", stackdir = "center")+
+  stat_summary(geom = "errorbar", fun.data = mean_se)+labs(y="BAT Mass (mg)")+scale_fill_manual(values = c("red","gray3"))+theme_classic()+
+  theme(axis.title.x=element_blank(),legend.position="none")+scale_x_discrete(limits=c("WT","KO"))+theme(axis.text.x = element_text(size=8), axis.text.y = element_text(size=8))
+
+
+p4
+
+p5<-ggplot(ffi, aes(x=Gene ,y=iWAT, fill=Gene))+geom_dotplot(binaxis = "y", stackdir = "center")+
+  stat_summary(geom = "errorbar", fun.data = mean_se)+labs(y="iWAT Mass (mg)")+scale_fill_manual(values = c("red","gray3"))+theme_classic()+
+  theme(axis.title.x=element_blank(),legend.position="none")+scale_x_discrete(limits=c("WT","KO"))+theme(axis.text.x = element_text(size=8), axis.text.y = element_text(size=8))
+
+
+p5
+
+p6<-ggplot(ffg, aes(x=Gene ,y=gWAT, fill=Gene))+geom_dotplot(binaxis = "y", stackdir = "center")+
+  stat_summary(geom = "errorbar", fun.data = mean_se)+labs(y="gWAT Mass (mg)")+scale_fill_manual(values = c("red","gray3"))+theme_classic()+
+  theme(axis.title.x=element_blank(),legend.position="none")+scale_x_discrete(limits=c("WT","KO"))+theme(axis.text.x = element_text(size=8), axis.text.y = element_text(size=8))
+
+
+p6
+
+p7<-ggplot(fft, aes(x=Gene ,y=ut, fill=Gene))+geom_dotplot(binaxis = "y", stackdir = "center")+
+  stat_summary(geom = "errorbar", fun.data = mean_se)+labs(y="Uterus Mass (mg)")+scale_fill_manual(values = c("red","gray3"))+theme_classic()+
+  theme(axis.title.x=element_blank(),legend.position="none")+scale_x_discrete(limits=c("WT","KO"))+theme(axis.text.x = element_text(size=8), axis.text.y = element_text(size=8))
+
+
+p7
+
+p8<-ggplot(ffo, aes(x=Gene ,y=ov, fill=Gene))+geom_dotplot(binaxis = "y", stackdir = "center")+
+  stat_summary(geom = "errorbar", fun.data = mean_se)+labs(y="Ovary Mass (mg)")+scale_fill_manual(values = c("red","gray3"))+theme_classic()+
+  theme(axis.title.x=element_blank(),legend.position="none")+scale_x_discrete(limits=c("WT","KO"))+theme(axis.text.x = element_text(size=8), axis.text.y = element_text(size=8))
+
+
+p8
+
+
+pp1<-ggarrange(p11,p4,p5,p6,nrow=1)
+
+pp1
+
+res.aov<-aov(ov ~ Gene,data=ffo)
+summary(res.aov)
+TukeyHSD(res.aov)
+
+
+
+ggsave("Female tissue weight(total, B5-p).png",pp1,device="png",scale= 1, dpi=300, width=7.2, height=2.4)
+
+
