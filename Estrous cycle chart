@@ -1,0 +1,55 @@
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+library(chron)
+library(rstatix)
+library(emmeans)
+library(EnvStats)
+library(lubridate)
+library(anytime)
+library(reshape2)
+
+
+setwd("/Volumes/LaCie/JAE PARK/Project/J6 Esr1 flfl x RPRM cre/BW & Echo")
+
+df<-read.csv("estrous cycle chart.csv",check.names = FALSE)
+df <- df[ , -1]
+ddf<-melt(df, id.vars=c('Gene'),var='cycle')
+#d<-subset(d, select= c(1:9))
+ko<-filter(ddf, Gene == "KO")
+
+count_table <- table(ko$value)
+print(count_table)
+
+data_df <- data.frame( Category = c("D", "P","E","M"), Value = c(79, 0,19,0))
+
+  
+wt<-filter(ddf, Gene == "WT")
+
+count_table <- table(wt$value)
+print(count_table)
+
+
+data_df2 <- data.frame( Category = c("D", "P","E","M"), Value = c(39, 26,25,22))
+
+###
+
+set<-list(scale_y_continuous(limits=c(0,100)))
+
+p5<- ggplot(data = data_df, aes(x = Category, y= Value)) +
+  geom_col(fill = "red",width = 0.25)+theme(legend.position="none")+labs(x=NULL,y=NULL,title=NULL)+theme_classic()+set
+p5
+
+ggsave("RERKO estrous cycle(B8-p).png",p5,device="png",scale= 1, dpi=300, width=3.2, height=2.4)
+
+
+
+
+p6<- ggplot(data = data_df2, aes(x = Category, y= Value)) +
+  geom_col(fill = "black",width = 0.25)+theme(legend.position="none")+labs(x=NULL,y=NULL,title=NULL)+theme_classic()+set
+p6
+
+ggsave("RERKO WT Estrous cycle(B9-p).png",p6,device="png",scale= 1, dpi=300, width=3.2, height=2.4)
+
+
