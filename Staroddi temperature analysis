@@ -1,0 +1,51 @@
+
+
+library(dplyr)
+library(tidyverse)
+library(ggplot2)
+library(ggpubr)
+library(chron)
+library(rstatix)
+library(emmeans)
+library(anytime)
+library(lubridate)
+library(reshape2)
+
+#set
+
+setwd("")
+
+#Raw data processing-Star Oddi====
+#Examples of two mice from different probe
+
+#Setting the start date and end date
+
+start1<-"2022-07-06 07:00:00"
+end1<-"2022-07-08 07:00:00"
+
+
+#First sample
+
+t1<-read.csv("1N7787.csv",check.names = FALSE) # check.names=FALSE when it cant read csv file
+
+t1$Timestamp<- anytime(t1$Timestamp)
+
+t1$Timestamp<-as.character(t1$Timestamp) #if it doesnt changed to character, it wont recognized in mutant step 
+#will have date error
+
+t1<-t1%>%dplyr::filter((t1$Timestamp>start1 & t1$Timestamp<end1))
+
+colnames(t1)[2]<-334
+
+#Second sample
+
+t2<-read.csv("1N7786.csv",check.names = FALSE) # check.names=FALSE when it cant read csv file
+
+t2$Timestamp<- anytime(t2$Timestamp)
+
+t2$Timestamp<-as.character(t2$Timestamp) #if it doesnt changed to character, it wont recognized in mutant step 
+#will have date error
+
+t2<-t2%>%dplyr::filter((t2$Timestamp>start1 & t2$Timestamp<end1))
+colnames(t2)[2]<-335
+
